@@ -9,5 +9,7 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+        # Allow extra fields to avoid validation errors for keys not defined here
+        extra = "allow"
 
 settings = Settings()

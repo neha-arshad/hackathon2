@@ -21,11 +21,20 @@ def get_task(db: Session, task_id: int, owner_id: int):
     return db.query(models.Task).filter(models.Task.id == task_id, models.Task.owner_id == owner_id).first()
 
 def create_task(db: Session, task: schemas.TaskCreate, owner_id: int):
-    db_task = models.Task(**task.dict(), owner_id=owner_id)
-    db.add(db_task)
-    db.commit()
-    db.refresh(db_task)
-    return db_task
+    try:
+        db_task = models.Task(**task.dict(), owner_id=owner_id)
+        db.add(db_task)
+        db.commit()
+        db.refresh(db_task)
+        
+        # Verify the task was actually stored
+        if db_task.id is None:
+            return None
+        
+        return db_task
+    except Exception as e:
+        db.rollback()
+        raise e
 
 def update_task(db: Session, task_id: int, task_update: schemas.TaskUpdate, owner_id: int):
     db_task = get_task(db, task_id, owner_id)
@@ -62,3 +71,50 @@ def search_tasks(db: Session, owner_id: int, keyword: str):
         models.Task.owner_id == owner_id,
         (models.Task.title.contains(keyword)) | (models.Task.description.contains(keyword))
     ).all()
+
+
+# ChatTask database operations
+def get_chat_tasks(db: Session, user_id: int, skip: int = 0, limit: int = 100):
+    return db.query(models.ChatTask).filter(models.ChatTask.user_id == user_id).offset(skip).limit(limit).all()
+
+
+def get_chat_task(db: Session, chat_task_id: int, user_id: int):
+    return db.query(models.ChatTask).filter(
+        models.ChatTask.id == chat_task_id,
+        models.ChatTask.user_id == user_id
+    ).first()
+
+
+def create_chat_task(db: Session, chat_task: schemas.ChatTaskCreate):
+    db_chat_task = models.ChatTask(**chat_task.dict())
+    db.add(db_chat_task)
+    db.commit()
+    db.refresh(db_chat_task)
+    return db_chat_task
+
+
+def update_chat_task(db: Session, chat_task_id: int, chat_task_update: schemas.ChatTaskUpdate, user_id: int):
+    db_chat_task = get_chat_task(db, chat_task_id, user_id)
+    if db_chat_task:
+        for field, value in chat_task_update.dict(exclude_unset=True).items():
+            setattr(db_chat_task, field, value)
+        db.commit()
+        db.refresh(db_chat_task)
+        return db_chat_task
+    return None
+
+
+def delete_chat_task(db: Session, chat_task_id: int, user_id: int):
+    db_chat_task = get_chat_task(db, chat_task_id, user_id)
+    if db_chat_task:
+        db.delete(db_chat_task)
+        db.commit()
+        return True
+    return False
+
+
+def get_chat_tasks_by_status(db: Session, user_id: int, status: Optional[str] = None):
+    query = db.query(models.ChatTask).filter(models.ChatTask.user_id == user_id)
+    if status is not None:
+        query = query.filter(models.ChatTask.status == status)
+    return query.all()

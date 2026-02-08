@@ -74,3 +74,15 @@ class Task(Base):
     priority = Column(String, default="medium")  # low, medium, high
     created_at = Column(DateTime, default=datetime.utcnow)
     owner_id = Column(Integer, index=True)
+
+
+class ChatTask(Base):
+    __tablename__ = "chat_tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True, nullable=False)  # Foreign key to users table
+    user_message = Column(String, nullable=False)  # User's message text
+    chatbot_response = Column(String, default="")  # Chatbot's response text
+    status = Column(String, default="pending")  # Status: pending, done, error
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

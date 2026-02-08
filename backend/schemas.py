@@ -42,3 +42,29 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     email: Optional[str] = None
+
+
+class ChatTaskBase(BaseModel):
+    user_id: int
+    user_message: str
+    chatbot_response: str = ""
+    status: str = "pending"  # pending, done, error
+
+
+class ChatTaskCreate(ChatTaskBase):
+    pass
+
+
+class ChatTaskUpdate(BaseModel):
+    user_message: Optional[str] = None
+    chatbot_response: Optional[str] = None
+    status: Optional[str] = None
+
+
+class ChatTaskResponse(ChatTaskBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True

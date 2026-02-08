@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import axios from 'axios'
+import { apiClient } from '../../api-client'
+import { API_BASE_URL } from '../../api.config'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -14,20 +15,24 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      const response = await axios.post('http://localhost:8000/auth/login', {
+      const response = await apiClient.post('/auth/login', {
         email,
         password
       })
-      
+
       // Store the token in localStorage
       localStorage.setItem('token', response.data.access_token)
-      
+
       // Redirect to dashboard
       router.push('/dashboard')
       router.refresh()
-    } catch (err) {
-      setError('Invalid email or password')
-      console.error(err)
+    } catch (err: any) {
+      if (err.code === 'ECONNREFUSED' || err.message.includes('Network Error')) {
+        setError('Cannot connect to the backend. Please make sure the server is running.')
+      } else {
+        setError(err.response?.data?.detail || 'Invalid email or password')
+      }
+      console.error('Login error:', err)
     }
   }
 

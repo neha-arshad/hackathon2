@@ -11,14 +11,20 @@ class TaskService:
 
     def add_task(self, task_create: schemas.TaskCreate, owner_id: int) -> models.Task:
         # Validate input like Phase I
-        if not task_create.title.strip():
+        if not task_create.title or not task_create.title.strip():
             raise ValueError("Task title cannot be empty")
 
         if task_create.priority not in ["low", "medium", "high"]:
             raise ValueError("Priority must be 'low', 'medium', or 'high'")
 
         # Use database function to create task
-        return database.create_task(self.db, task_create, owner_id)
+        created_task = database.create_task(self.db, task_create, owner_id)
+        
+        # Verify the task was actually stored
+        if created_task is None:
+            raise ValueError("Failed to create task in database")
+        
+        return created_task
 
     def get_all_tasks(self, owner_id: int) -> List[models.Task]:
         return database.get_tasks(self.db, owner_id)
@@ -78,3 +84,40 @@ class TaskService:
             return sorted(tasks, key=lambda t: priority_order.get(t.priority, 4), reverse=reverse)
         else:
             raise ValueError("Sort by must be 'created_at' or 'priority'")
+
+
+class ChatTaskService:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def create_chat_task(self, chat_task_create: schemas.ChatTaskCreate) -> models.ChatTask:
+        # Validate input
+        if not chat_task_create.user_message.strip():
+            raise ValueError("User message cannot be empty")
+
+        if chat_task_create.status not in ["pending", "done", "error"]:
+            raise ValueError("Status must be 'pending', 'done', or 'error'")
+
+        # Use database function to create chat task
+        return database.create_chat_task(self.db, chat_task_create)
+
+    def get_all_chat_tasks(self, user_id: int) -> List[models.ChatTask]:
+        return database.get_chat_tasks(self.db, user_id)
+
+    def get_chat_task_by_id(self, chat_task_id: int, user_id: int) -> Optional[models.ChatTask]:
+        return database.get_chat_task(self.db, chat_task_id, user_id)
+
+    def update_chat_task(self, chat_task_id: int, chat_task_update: schemas.ChatTaskUpdate, user_id: int) -> bool:
+        # Validate input if status is being updated
+        if chat_task_update.status is not None:
+            if chat_task_update.status not in ["pending", "done", "error"]:
+                raise ValueError("Status must be 'pending', 'done', or 'error'")
+
+        updated_chat_task = database.update_chat_task(self.db, chat_task_id, chat_task_update, user_id)
+        return updated_chat_task is not None
+
+    def delete_chat_task(self, chat_task_id: int, user_id: int) -> bool:
+        return database.delete_chat_task(self.db, chat_task_id, user_id)
+
+    def get_chat_tasks_by_status(self, user_id: int, status: str) -> List[models.ChatTask]:
+        return database.get_chat_tasks_by_status(self.db, user_id, status)

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import axios from 'axios'
+import { apiClient } from '../api-client'
+import { API_BASE_URL } from '../api.config'
 
 interface Task {
   id: number
@@ -40,18 +41,24 @@ export default function Dashboard() {
 
   const fetchTasks = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const response = await axios.get('http://localhost:8000/tasks', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+      const response = await apiClient.get('/tasks')
       setTasks(response.data)
       setLoading(false)
-    } catch (err) {
-      setError('Failed to load tasks')
+      setError('') // Clear any previous errors
+    } catch (err: any) {
       setLoading(false)
-      console.error(err)
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        setError('Authentication failed. Please log in again.')
+        localStorage.removeItem('token')
+        router.push('/auth/login')
+      } else if (err.response?.status === 404) {
+        setError('Tasks endpoint not found. Please check if the backend is running.')
+      } else if (err.code === 'ECONNREFUSED' || err.message.includes('Network Error')) {
+        setError('Cannot connect to the backend. Please make sure the server is running.')
+      } else {
+        setError(err.response?.data?.detail || 'Failed to load tasks')
+      }
+      console.error('Error fetching tasks:', err)
     }
   }
 
@@ -106,27 +113,31 @@ export default function Dashboard() {
     }
 
     try {
-      const token = localStorage.getItem('token')
-      await axios.post(
-        'http://localhost:8000/tasks',
-        { title, description, priority },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      )
+      const response = await apiClient.post('/tasks', { title, description, priority })
 
       // Reset form
       setTitle('')
       setDescription('')
       setPriority('medium')
 
+      // Show success message temporarily
+      setError('Task added successfully!')
+
       // Refresh tasks
       fetchTasks()
-    } catch (err) {
-      setError('Failed to add task')
-      console.error(err)
+    } catch (err: any) {
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        setError('Authentication failed. Please log in again.')
+        localStorage.removeItem('token')
+        router.push('/auth/login')
+      } else if (err.response?.status === 404) {
+        setError('Tasks endpoint not found. Please check if the backend is running.')
+      } else if (err.code === 'ECONNREFUSED' || err.message.includes('Network Error')) {
+        setError('Cannot connect to the backend. Please make sure the server is running.')
+      } else {
+        setError(err.response?.data?.detail || 'Failed to add task')
+      }
+      console.error('Error adding task:', err)
     }
   }
 
@@ -136,39 +147,51 @@ export default function Dashboard() {
     }
 
     try {
-      const token = localStorage.getItem('token')
-      await axios.delete(`http://localhost:8000/tasks/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+      await apiClient.delete(`/tasks/${id}`)
+
+      // Show success message temporarily
+      setError('Task deleted successfully!')
 
       // Refresh tasks
       fetchTasks()
-    } catch (err) {
-      setError('Failed to delete task')
-      console.error(err)
+    } catch (err: any) {
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        setError('Authentication failed. Please log in again.')
+        localStorage.removeItem('token')
+        router.push('/auth/login')
+      } else if (err.response?.status === 404) {
+        setError('Task not found or already deleted.')
+      } else if (err.code === 'ECONNREFUSED' || err.message.includes('Network Error')) {
+        setError('Cannot connect to the backend. Please make sure the server is running.')
+      } else {
+        setError(err.response?.data?.detail || 'Failed to delete task')
+      }
+      console.error('Error deleting task:', err)
     }
   }
 
   const handleToggleComplete = async (id: number, completed: boolean) => {
     try {
-      const token = localStorage.getItem('token')
-      await axios.put(
-        `http://localhost:8000/tasks/${id}/complete`,
-        { completed: !completed },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      )
+      await apiClient.put(`/tasks/${id}/complete`, { completed: !completed })
+
+      // Show success message temporarily
+      setError('Task status updated successfully!')
 
       // Refresh tasks
       fetchTasks()
-    } catch (err) {
-      setError('Failed to update task')
-      console.error(err)
+    } catch (err: any) {
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        setError('Authentication failed. Please log in again.')
+        localStorage.removeItem('token')
+        router.push('/auth/login')
+      } else if (err.response?.status === 404) {
+        setError('Task not found.')
+      } else if (err.code === 'ECONNREFUSED' || err.message.includes('Network Error')) {
+        setError('Cannot connect to the backend. Please make sure the server is running.')
+      } else {
+        setError(err.response?.data?.detail || 'Failed to update task')
+      }
+      console.error('Error updating task:', err)
     }
   }
 

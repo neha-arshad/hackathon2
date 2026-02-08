@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import axios from 'axios'
+import { apiClient } from '../../api-client'
+import { API_BASE_URL } from '../../api.config'
 
 export default function Signup() {
   const [email, setEmail] = useState('')
@@ -14,33 +15,37 @@ export default function Signup() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (password !== confirmPassword) {
       setError('Passwords do not match')
       return
     }
 
     try {
-      await axios.post('http://localhost:8000/auth/register', {
+      await apiClient.post('/auth/register', {
         email,
         password
       })
-      
+
       // Automatically login after registration
-      const loginResponse = await axios.post('http://localhost:8000/auth/login', {
+      const loginResponse = await apiClient.post('/auth/login', {
         email,
         password
       })
-      
+
       // Store the token in localStorage
       localStorage.setItem('token', loginResponse.data.access_token)
-      
+
       // Redirect to dashboard
       router.push('/dashboard')
       router.refresh()
-    } catch (err) {
-      setError('Registration failed. Email may already be taken.')
-      console.error(err)
+    } catch (err: any) {
+      if (err.code === 'ECONNREFUSED' || err.message.includes('Network Error')) {
+        setError('Cannot connect to the backend. Please make sure the server is running.')
+      } else {
+        setError(err.response?.data?.detail || 'Registration failed. Email may already be taken.')
+      }
+      console.error('Signup error:', err)
     }
   }
 

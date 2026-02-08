@@ -1,4 +1,6 @@
-from src.task_manager import TaskManager
+# from src.task_manager import TaskManager
+from .task_manager import TaskManager
+
 from src.models import Task
 import sys
 

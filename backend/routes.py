@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from typing import List
-from datetime import timedelta
+from datetime import timedelta, datetime
 import schemas, services, database, models
 from database import get_user_by_email
 from security import verify_password, create_access_token, verify_token
@@ -65,13 +65,35 @@ def create_task(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # Use the service layer to create task with validation
+    """
+    Create a new task for the authenticated user.
+    Returns 200 on success, 400 on validation error, 401 on unauthorized.
+    """
     try:
+        # Validate input data
+        if not task.title or not task.title.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Task title is required and cannot be empty"
+            )
+        
+        # Use the service layer to create task with validation
         task_service = services.TaskService(db)
         db_task = task_service.add_task(task, current_user.id)
+        
+        # Verify the task was actually stored
+        if db_task is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create task in database"
+            )
+        
         return db_task
     except ValueError as e:
         handle_bad_request_error(str(e))
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
         handle_bad_request_error(f"Error creating task: {str(e)}")
 
@@ -139,3 +161,128 @@ def mark_task_complete(
         return {"message": f"Task marked as {'completed' if completed else 'pending'}"}
     except Exception as e:
         handle_bad_request_error(f"Error updating task status: {str(e)}")
+
+
+# ChatTask API routes
+@router.get("/chat_tasks", response_model=List[schemas.ChatTaskResponse])
+def get_chat_tasks(
+    skip: int = 0,
+    limit: int = 100,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        chat_tasks = database.get_chat_tasks(db, current_user.id, skip=skip, limit=limit)
+        return chat_tasks
+    except Exception as e:
+        handle_bad_request_error(f"Error retrieving chat tasks: {str(e)}")
+
+
+@router.post("/chat_tasks", response_model=schemas.ChatTaskResponse)
+def create_chat_task(
+    chat_task: schemas.ChatTaskCreate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Use the service layer to create chat task with validation
+    try:
+        chat_task_service = services.ChatTaskService(db)
+        db_chat_task = chat_task_service.create_chat_task(chat_task)
+        return db_chat_task
+    except ValueError as e:
+        handle_bad_request_error(str(e))
+    except Exception as e:
+        handle_bad_request_error(f"Error creating chat task: {str(e)}")
+
+
+@router.get("/chat_tasks/{chat_task_id}", response_model=schemas.ChatTaskResponse)
+def get_chat_task(
+    chat_task_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    chat_task = database.get_chat_task(db, chat_task_id, current_user.id)
+    if not chat_task:
+        handle_not_found_error("ChatTask")
+    return chat_task
+
+
+@router.put("/chat_tasks/{chat_task_id}", response_model=schemas.ChatTaskResponse)
+def update_chat_task(
+    chat_task_id: int,
+    chat_task_update: schemas.ChatTaskUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Use the service layer to update chat task with validation
+    try:
+        chat_task_service = services.ChatTaskService(db)
+        success = chat_task_service.update_chat_task(chat_task_id, chat_task_update, current_user.id)
+        if not success:
+            handle_not_found_error("ChatTask")
+
+        updated_chat_task = database.get_chat_task(db, chat_task_id, current_user.id)
+        return updated_chat_task
+    except ValueError as e:
+        handle_bad_request_error(str(e))
+    except Exception as e:
+        handle_bad_request_error(f"Error updating chat task: {str(e)}")
+
+
+@router.delete("/chat_tasks/{chat_task_id}")
+def delete_chat_task(
+    chat_task_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Use the service layer to delete chat task
+    try:
+        chat_task_service = services.ChatTaskService(db)
+        success = chat_task_service.delete_chat_task(chat_task_id, current_user.id)
+        if not success:
+            handle_not_found_error("ChatTask")
+        return {"message": "Chat task deleted successfully"}
+    except Exception as e:
+        handle_bad_request_error(f"Error deleting chat task: {str(e)}")
+
+
+@router.get("/chat_tasks/status/{status}", response_model=List[schemas.ChatTaskResponse])
+def get_chat_tasks_by_status(
+    status: str,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        chat_tasks = database.get_chat_tasks_by_status(db, current_user.id, status)
+        return chat_tasks
+    except Exception as e:
+        handle_bad_request_error(f"Error retrieving chat tasks by status: {str(e)}")
+
+
+# Chat endpoint for AI agent integration - public access for Swagger UI testing
+@router.post("/chat")
+def chat_endpoint(message_data: dict):
+    """
+    Endpoint to interact with the AI chatbot.
+    Expects a JSON payload with a 'message' field.
+    """
+    try:
+        user_message = message_data.get("message", "")
+        if not user_message:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Message field is required"
+            )
+
+        # For now, return a simple echo response
+        # In a real implementation, this would call the AI agent
+        response = {
+            "response": f"Echo: {user_message}",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+        return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        handle_bad_request_error(f"Error processing chat message: {str(e)}")
