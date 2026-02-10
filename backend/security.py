@@ -38,5 +38,23 @@ def verify_token(token: str, credentials_exception):
         if email is None:
             raise credentials_exception
         return email
-    except JWTError:
+    except jwt.ExpiredSignatureError:
+        # Token has expired - this should be a 401
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except jwt.JWTClaimsError:
+        # Invalid claims - this should be a 401
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token claims",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except jwt.JWTError:
+        # Other JWT errors - this should be a 401
+        raise credentials_exception
+    except Exception:
+        # Any other exception during token verification
         raise credentials_exception

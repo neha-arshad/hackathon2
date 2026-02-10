@@ -47,7 +47,7 @@ def login(user_credentials: schemas.UserCreate, db: Session = Depends(get_db)):
         handle_bad_request_error(f"Error creating access token: {str(e)}")
 
 @router.get("/tasks", response_model=List[schemas.TaskResponse])
-def get_tasks(
+async def get_tasks(
     skip: int = 0,
     limit: int = 100,
     current_user: models.User = Depends(get_current_user),
@@ -60,7 +60,7 @@ def get_tasks(
         handle_bad_request_error(f"Error retrieving tasks: {str(e)}")
 
 @router.post("/tasks", response_model=schemas.TaskResponse)
-def create_task(
+async def create_task(
     task: schemas.TaskCreate,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -76,18 +76,18 @@ def create_task(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Task title is required and cannot be empty"
             )
-        
+
         # Use the service layer to create task with validation
         task_service = services.TaskService(db)
         db_task = task_service.add_task(task, current_user.id)
-        
+
         # Verify the task was actually stored
         if db_task is None:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to create task in database"
             )
-        
+
         return db_task
     except ValueError as e:
         handle_bad_request_error(str(e))
@@ -98,7 +98,7 @@ def create_task(
         handle_bad_request_error(f"Error creating task: {str(e)}")
 
 @router.get("/tasks/{task_id}", response_model=schemas.TaskResponse)
-def get_task(
+async def get_task(
     task_id: int,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -109,7 +109,7 @@ def get_task(
     return task
 
 @router.put("/tasks/{task_id}", response_model=schemas.TaskResponse)
-def update_task(
+async def update_task(
     task_id: int,
     task_update: schemas.TaskUpdate,
     current_user: models.User = Depends(get_current_user),
@@ -130,7 +130,7 @@ def update_task(
         handle_bad_request_error(f"Error updating task: {str(e)}")
 
 @router.delete("/tasks/{task_id}")
-def delete_task(
+async def delete_task(
     task_id: int,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -146,7 +146,7 @@ def delete_task(
         handle_bad_request_error(f"Error deleting task: {str(e)}")
 
 @router.put("/tasks/{task_id}/complete")
-def mark_task_complete(
+async def mark_task_complete(
     task_id: int,
     completed: bool,
     current_user: models.User = Depends(get_current_user),
@@ -165,7 +165,7 @@ def mark_task_complete(
 
 # ChatTask API routes
 @router.get("/chat_tasks", response_model=List[schemas.ChatTaskResponse])
-def get_chat_tasks(
+async def get_chat_tasks(
     skip: int = 0,
     limit: int = 100,
     current_user: models.User = Depends(get_current_user),
@@ -179,7 +179,7 @@ def get_chat_tasks(
 
 
 @router.post("/chat_tasks", response_model=schemas.ChatTaskResponse)
-def create_chat_task(
+async def create_chat_task(
     chat_task: schemas.ChatTaskCreate,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -196,7 +196,7 @@ def create_chat_task(
 
 
 @router.get("/chat_tasks/{chat_task_id}", response_model=schemas.ChatTaskResponse)
-def get_chat_task(
+async def get_chat_task(
     chat_task_id: int,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -208,7 +208,7 @@ def get_chat_task(
 
 
 @router.put("/chat_tasks/{chat_task_id}", response_model=schemas.ChatTaskResponse)
-def update_chat_task(
+async def update_chat_task(
     chat_task_id: int,
     chat_task_update: schemas.ChatTaskUpdate,
     current_user: models.User = Depends(get_current_user),
@@ -230,7 +230,7 @@ def update_chat_task(
 
 
 @router.delete("/chat_tasks/{chat_task_id}")
-def delete_chat_task(
+async def delete_chat_task(
     chat_task_id: int,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -247,7 +247,7 @@ def delete_chat_task(
 
 
 @router.get("/chat_tasks/status/{status}", response_model=List[schemas.ChatTaskResponse])
-def get_chat_tasks_by_status(
+async def get_chat_tasks_by_status(
     status: str,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
