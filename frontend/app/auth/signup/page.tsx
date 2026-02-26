@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { apiClient } from '../../api-client'
+import { apiClient, cleanToken } from '../../api-client'
 import { API_BASE_URL } from '../../api.config'
 
 export default function Signup() {
@@ -33,8 +33,18 @@ export default function Signup() {
         password
       })
 
-      // Store the token in localStorage
-      localStorage.setItem('token', loginResponse.data.access_token)
+      // CRITICAL: Store ONLY the raw JWT token, without "Bearer " prefix
+      // The axios interceptor adds "Bearer " automatically to every request
+      const rawToken = loginResponse.data.access_token.trim()
+
+      // Use the exported cleanToken function to ensure no "Bearer " prefix
+      const cleanTokenValue = cleanToken(rawToken)
+
+      // Double-check: ensure the stored token does NOT start with "Bearer "
+      const finalToken = cleanTokenValue?.replace(/^Bearer\s+/i, '').trim() || ''
+      
+      localStorage.setItem('token', finalToken)
+      console.log('[Signup] Token saved successfully, length:', finalToken.length)
 
       // Redirect to dashboard
       router.push('/dashboard')

@@ -151,18 +151,11 @@ export default function ChatPage() {
     setIsLoading(true);
 
     try {
-      // Get the stored token after login
-      const token = localStorage.getItem("token");
-
-      // Call the AI agent API with Authorization header
+      // NOTE: No need to manually set Authorization header
+      // The axios interceptor in api-client.ts automatically adds it
       const response = await aiAgentClient.post(
         "/chat",
         { message: inputMessage },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`, // Send token to backend
-          },
-        },
       );
 
       // Ensure we're getting the response in the expected format

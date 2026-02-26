@@ -33,15 +33,6 @@ export default function Home() {
                 Sign Up
               </Link>
             </div>
-
-            <div className="mt-8 pt-6 border-t border-gray-200">
-              <Link href="/chat" className="w-full flex justify-center items-center py-3 px-4 rounded-xl shadow-sm text-base font-medium text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-all duration-200 transform hover:-translate-y-0.5">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                </svg>
-                AI Chat Assistant
-              </Link>
-            </div>
           </div>
         </div>
         
